@@ -4,7 +4,7 @@ import Notiflix from 'notiflix';
 
 import { AppImg, Wrapper } from './App.styled';
 import { Container } from 'components/Container/Container';
-import Searchbar from 'components/Searchbar/SearchbarHook';
+import Searchbar from 'components/Searchbar/Searchbar';
 import { fetchImages } from '../../FetchImages/FetchImages';
 import { ImageGallery } from 'components/ImageGallery/ImageGallery';
 import { Button } from 'components/Button/Button';
