@@ -31,6 +31,7 @@ export default function App() {
       if (hits.length < 1) {
         setStatus('idle');
         setTotalHits(0);
+        Notiflix.Notify.info(' 🙄No results were found for your search');
       } else {
         setHits(prevState => [...prevState, ...hits]);
         setTotalHits(totalHits);
