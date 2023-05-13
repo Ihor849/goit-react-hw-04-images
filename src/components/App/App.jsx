@@ -1,123 +1,114 @@
-import React, { Component } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import Notiflix from 'notiflix';
 
 import { AppImg, Wrapper } from './App.styled';
 import { Container } from 'components/Container/Container';
-import { Searchbar } from 'components/Searchbar/Searchbar';
+import Searchbar from 'components/Searchbar/SearchbarHook';
 import { fetchImages } from '../../FetchImages/FetchImages';
 import { ImageGallery } from 'components/ImageGallery/ImageGallery';
 import { Button } from 'components/Button/Button';
 import { ColorRingLoad } from 'components/Loader/Loader';
 import { ButtonUpTop } from 'components/ButtonUpTop/ButtonUpTop';
 
-export class App extends Component {
-  state = {
-    query: '',
-    items: [],
-    status: 'idle',
-    totalHits: 0,
-    page: 1,
-    error: '',
-  };
-  handleSubmit = async searchQuery => {
-    this.setState({ query: searchQuery, page: 1 });
+export default function App() {
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState([]);
+  const [totalHits, setTotalHits] = useState(0);
+  const [page, setPage] = useState(1);
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('idle');
 
+  const handleSubmit = query => {
+    setQuery(query);
+    setHits([]);
+    setPage(1);
+  };
+  async function fetchGallery(query, page) {
     try {
-      this.setState({ status: 'pending' });
-      const { hits, totalHits } = await fetchImages(searchQuery, 1);
-      // console.log(hits, totalHits);
+      setStatus('pending');
+      const { hits, totalHits } = await fetchImages(query, page);
       if (hits.length < 1) {
-        this.setState({ status: 'idle', totalHits: 0 });
+        setStatus('idle');
+        setTotalHits(0);
       } else {
-        this.setState({
-          items: hits,
-          totalHits: totalHits,
-          status: 'resolved',
-        });
+        setHits(prevState => [...prevState, ...hits]);
+        setTotalHits(totalHits);
+        setStatus('resolved');
       }
     } catch (error) {
-      this.setState({ status: 'rejected', error });
+      setStatus('rejected');
+      setError(error);
     }
+  }
+  const onLoadMore = async () => {
+    setPage(prevState => prevState + 1);
   };
 
-  onLoadMore = async () => {
-    const { query, page } = this.state;
-    this.setState({ status: 'pending' });
-    this.setState(prevState => {
-      return { page: prevState.page + 1 };
-    });
-    try {
-      const { hits } = await fetchImages(query, page + 1);
-
-      this.setState(prevState => ({
-        items: [...prevState.items, ...hits],
-        status: 'resolved',
-      }));
-    } catch (error) {
-      this.setState({ status: 'rejected', error });
-    }
-  };
-  onUpTop = e => {
+  const onUpTop = () => {
     if (window.pageYOffset > 0) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  render() {
-    const { totalHits, status, items, query } = this.state;
-    if (status === 'idle') {
-      return (
-        <AppImg>
-          <Container>
-            <Searchbar onSubmit={this.handleSubmit} />
-            {query && totalHits < 1 ? (
-              Notiflix.Notify.info(' 🙄No results were found for your search')
-            ) : (
-              <ImageGallery images={this.state.items} />
-            )}
-          </Container>
-        </AppImg>
-      );
+  useEffect(() => {
+    if (query === '') {
+      return;
     }
-    if (status === 'pending') {
-      return (
-        <AppImg>
-          <Container>
-            <Searchbar onSubmit={this.handleSubmit} />
-            <ImageGallery images={this.state.items} />
-            <ColorRingLoad />
-          </Container>
-        </AppImg>
-      );
-    }
-    if (status === 'rejected') {
-      return (
-        <AppImg>
-          <Container>
-            <Searchbar onSubmit={this.handleSubmit} />
-            <ImageGallery images={this.state.items} />
+    fetchGallery(query, page);
+  }, [page, query]);
 
-            {Notiflix.Notify.failure(`${this.state.error.message}`)}
-          </Container>
-        </AppImg>
-      );
-    }
-    if (status === 'resolved') {
-      return (
-        <AppImg>
-          <Container>
-            <Searchbar onSubmit={this.handleSubmit} />
-            <ImageGallery images={this.state.items} />
-            {totalHits > 12 && totalHits > items.length && (
-              <Wrapper>
-                <Button btnLoadMore={this.onLoadMore} />
-                <ButtonUpTop onClick={this.onUpTop} />
-              </Wrapper>
-            )}
-          </Container>
-        </AppImg>
-      );
-    }
+  if (status === 'idle') {
+    return (
+      <AppImg>
+        <Container>
+          <Searchbar onSubmit={handleSubmit} />
+          {query && totalHits < 0 ? (
+            Notiflix.Notify.info(' 🙄No results were found for your search')
+          ) : (
+            <ImageGallery images={hits} />
+          )}
+        </Container>
+      </AppImg>
+    );
+  }
+  if (status === 'pending') {
+    return (
+      <AppImg>
+        <Container>
+          <Searchbar onSubmit={handleSubmit} />
+          <ImageGallery images={hits} />
+          <ColorRingLoad />
+        </Container>
+      </AppImg>
+    );
+  }
+  if (status === 'rejected') {
+    return (
+      <AppImg>
+        <Container>
+          <Searchbar onSubmit={handleSubmit} />
+          <ImageGallery images={hits} />
+
+          {Notiflix.Notify.failure(`${error.message}`)}
+        </Container>
+      </AppImg>
+    );
+  }
+  if (status === 'resolved') {
+    return (
+      <AppImg>
+        <Container>
+          <Searchbar onSubmit={handleSubmit} />
+          <ImageGallery images={hits} />
+          {totalHits > 12 && totalHits > hits.length && (
+            <Wrapper>
+              <Button btnLoadMore={onLoadMore} />
+              <ButtonUpTop onClick={onUpTop} />
+            </Wrapper>
+          )}
+        </Container>
+      </AppImg>
+    );
   }
 }
-export default App;
